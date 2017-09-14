@@ -1,5 +1,5 @@
 import numpy as np
-import random
+from random import choice
 from logic import *
 
 from math import log2
@@ -13,6 +13,13 @@ def decode(x):
     row = (x & 61440) >> 12, (x & 3840) >> 8, (x & 240) >> 4, x & 15
     row = [0 if c == 0 else 2 ** c for c in row]
     return row
+def encode_field(field):
+    return (encode(field[0]) << 48) | (encode(field[1]) << 32) | (encode(field[2]) << 16) | encode(field[3])
+def decode_field(x):
+    return [decode((x & 0xffff000000000000) >> 48),
+        decode((x & 0x0000ffff00000000) >> 32),
+        decode((x & 0x00000000ffff0000) >> 16),
+        decode(x & 0x000000000000ffff)]
 def warmup():
     def get(x, f):
         x = encode(f([decode(x), [0,0,0,0], [0,0,0,0], [0,0,0,0]])[0][0])
@@ -199,16 +206,25 @@ def alphabeta(state, depth, a, b, maximize, first=True):
             return v, next_states[v]
         return v
     
-     
-def player1_move(state):
-    v, moves = alphabeta(state, 7, inf_m, inf_p, True)
-    return get_successors_move(state)[random.choice(moves)]
+class Agent():
+    def __init__(self, difficulty):
+        self.difficulty = difficulty
+        global lmap, rmap, pmap, costs
+        lmap, rmap, pmap, costs = warmup()
 
-def player2_move(state, rand=False):
-    if rand:
-        states = get_successors_place(state)
-        if len(states) == 0:
+    def player_move(self, state):
+        v, moves = alphabeta(state, self.difficulty, inf_m, inf_p, True)
+        return get_successors_move(state)[choice(moves)]
+
+    def adversary_move(self, state, rand=False):
+        if rand:
+            states = get_successors_place(state)
+            if len(states) == 0:
+                return state
+            return choice(states)
+        try:
+            v, moves = alphabeta(state, self.difficulty, inf_m, inf_p, False)
+        except TypeError:
             return state
-        return random.choice(states)
-    v, moves = alphabeta(state, 3, inf_m, inf_p, False)
-    return get_successors_place(state)[random.choice(moves)]
+        
+        return get_successors_place(state)[choice(moves)]
