@@ -1,6 +1,7 @@
 import numpy as np
 from random import choice
 from logic import *
+import progressbar
 
 from math import log2
 
@@ -24,11 +25,13 @@ def warmup():
     def get(x, f):
         x = encode(f([decode(x), [0,0,0,0], [0,0,0,0], [0,0,0,0]])[0][0])
         return x
+    print('Warming up...')
+    bar = progressbar.ProgressBar()
     left_map = {}
     right_map = {}
     place_map = {}
     costs = {}
-    for i in range(0xffff + 1):
+    for i in bar(range(0xffff + 1)):
         left_map[i] = get(i, left)
         right_map[i] = get(i, right)
         costs[i] = cost(i)
