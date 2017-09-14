@@ -2,6 +2,23 @@ from tkinter import *
 from logic import *
 from random import *
 
+from agent import Agent, encode_field, decode_field
+import argparse
+
+parser = argparse.ArgumentParser(description='Game options.')
+parser.add_argument('player', nargs='?', help='human or AI player?', default='human')
+parser.add_argument('adversary', nargs='?', help='random or AI adversary?', default='random')
+parser.add_argument('difficulty', nargs='?', help='AI difficulty?', default=5)
+
+args = parser.parse_args()
+
+player = args.player
+adversary = args.adversary
+difficulty = args.difficulty
+
+if player == 'AI' or adversary == 'AI':
+    agent = Agent(difficulty)
+
 SIZE = 500
 GRID_LEN = 4
 GRID_PADDING = 10
@@ -81,18 +98,29 @@ class GameGrid(Frame):
         
     def key_down(self, event):
         key = repr(event.char)
-        if key in self.commands:
-            self.matrix,done = self.commands[repr(event.char)](self.matrix)
-            if done:
+        if player == 'human':
+            if key in self.commands:
+                self.matrix,done = self.commands[repr(event.char)](self.matrix)
+            else:
+                return
+        else:
+            self.matrix,done = decode_field(agent.player_move(encode_field(self.matrix))), True
+
+        if done:
+            if adversary == 'AI':
+                self.matrix = decode_field(agent.adversary_move(encode_field(self.matrix), False))
+            else:
                 self.matrix = add_two(self.matrix)
-                self.update_grid_cells()
-                done=False
-                if game_state(self.matrix)=='win':
-                    self.grid_cells[1][1].configure(text="You",bg=BACKGROUND_COLOR_CELL_EMPTY)
-                    self.grid_cells[1][2].configure(text="Win!",bg=BACKGROUND_COLOR_CELL_EMPTY)
-                if game_state(self.matrix)=='lose':
-                    self.grid_cells[1][1].configure(text="You",bg=BACKGROUND_COLOR_CELL_EMPTY)
-                    self.grid_cells[1][2].configure(text="Lose!",bg=BACKGROUND_COLOR_CELL_EMPTY)
+            self.update_grid_cells()
+            done=False
+            if game_state(self.matrix)=='win':
+                self.grid_cells[1][1].configure(text="You",bg=BACKGROUND_COLOR_CELL_EMPTY)
+                self.grid_cells[1][2].configure(text="Win!",bg=BACKGROUND_COLOR_CELL_EMPTY)
+            if game_state(self.matrix)=='lose':
+                self.grid_cells[1][1].configure(text="You",bg=BACKGROUND_COLOR_CELL_EMPTY)
+                self.grid_cells[1][2].configure(text="Lose!",bg=BACKGROUND_COLOR_CELL_EMPTY)
+            
+
 
 
     def generate_next(self):
