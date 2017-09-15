@@ -8,7 +8,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Game options.')
 parser.add_argument('player', nargs='?', help='human or AI player?', default='human')
 parser.add_argument('adversary', nargs='?', help='random or AI adversary?', default='random')
-parser.add_argument('difficulty', nargs='?', help='AI difficulty?', default=5)
+parser.add_argument('difficulty', nargs='?', help='AI difficulty?', default=5, type=int)
 
 args = parser.parse_args()
 
