@@ -5,7 +5,11 @@ import progressbar
 
 from math import log2
 
-qmasks = [int(mask) for mask in (15 << np.arange(0, 16, 4))]
+def static_var(varname, value):
+    def decorate(func):
+        setattr(func, varname, value)
+        return func
+    return decorate
 
 def encode(row):
     row = [0 if r == 0 else int(log2(r)) for r in row]
@@ -21,33 +25,30 @@ def decode_field(x):
         decode((x & 0x0000ffff00000000) >> 32),
         decode((x & 0x00000000ffff0000) >> 16),
         decode(x & 0x000000000000ffff)]
+
+@static_var('qmasks', [int(mask) for mask in (15 << np.arange(0, 16, 4))])
 def warmup():
     def get(x, f):
         x = encode(f([decode(x), [0,0,0,0], [0,0,0,0], [0,0,0,0]])[0][0])
         return x
-    print('Warming up...')
+    print('Warming up state space...')
     bar = progressbar.ProgressBar()
     left_map = {}
     right_map = {}
     place_map = {}
-    costs = {}
     for i in bar(range(0xffff + 1)):
         left_map[i] = get(i, left)
         right_map[i] = get(i, right)
-        costs[i] = cost(i)
         
         successors = []
-        for mask in qmasks:
+        for mask in warmup.qmasks:
             if (i & mask == 0):
                 successors.append((i | (mask & (mask >> 3))))
         place_map[i] = successors
         
-    return left_map, right_map, place_map, costs
+    return left_map, right_map, place_map
 
-def cost(row):
-    row = [0 if c == 0 else (3 ** np.log(c)) for c in decode(row)]
-    s = sum(row)
-    return s
+left_map, right_map, place_map = warmup()
 
 def init_state():
 #    field = add_two(new_game(4))
@@ -63,20 +64,24 @@ def print_state(state):
         (state & 0x000000000000ffff)
     print(np.array([decode(r) for r in rows]))
 
+
+@static_var('lmap', left_map)
 def move_left(state):
     return \
-        (lmap[(state & 0xffff000000000000) >> 48] << 48) |\
-        (lmap[(state & 0x0000ffff00000000) >> 32] << 32) |\
-        (lmap[(state & 0x00000000ffff0000) >> 16] << 16) |\
-        (lmap[(state & 0x000000000000ffff)])
+        (move_left.lmap[(state & 0xffff000000000000) >> 48] << 48) |\
+        (move_left.lmap[(state & 0x0000ffff00000000) >> 32] << 32) |\
+        (move_left.lmap[(state & 0x00000000ffff0000) >> 16] << 16) |\
+        (move_left.lmap[(state & 0x000000000000ffff)])
 
+@static_var('rmap', right_map)
 def move_right(state):
     return \
-        (rmap[(state & 0xffff000000000000) >> 48] << 48) |\
-        (rmap[(state & 0x0000ffff00000000) >> 32] << 32) |\
-        (rmap[(state & 0x00000000ffff0000) >> 16] << 16) |\
-        (rmap[(state & 0x000000000000ffff)])
+        (move_right.rmap[(state & 0xffff000000000000) >> 48] << 48) |\
+        (move_right.rmap[(state & 0x0000ffff00000000) >> 32] << 32) |\
+        (move_right.rmap[(state & 0x00000000ffff0000) >> 16] << 16) |\
+        (move_right.rmap[(state & 0x000000000000ffff)])
 
+@static_var('lmap', left_map)
 def move_up(state):
     c1 = (state & 0xf000000000000000) >> 48 | \
         (state & 0x0000f00000000000) >> 36 | \
@@ -94,16 +99,17 @@ def move_up(state):
         (state & 0x0000000f00000000) >> 24 | \
         (state & 0x00000000000f0000) >> 12 | \
         (state & 0x000000000000000f)
-    c1 = lmap[c1]
-    c2 = lmap[c2]
-    c3 = lmap[c3]
-    c4 = lmap[c4]
+    c1 = move_up.lmap[c1]
+    c2 = move_up.lmap[c2]
+    c3 = move_up.lmap[c3]
+    c4 = move_up.lmap[c4]
     r1 = (c1 & 0xf000) | ((c2 & 0xf000) >> 4) | ((c3 & 0xf000) >> 8) | ((c4 & 0xf000) >> 12)
     r2 = ((c1 & 0x0f00) << 4) | (c2 & 0x0f00) | ((c3 & 0x0f00) >> 4) | ((c4 & 0x0f00) >> 8)
     r3 = ((c1 & 0x00f0) << 8) | ((c2 & 0x00f0) << 4) | (c3 & 0x00f0) | ((c4 & 0x00f0) >> 4)
     r4 = ((c1 & 0x000f) << 12) | ((c2 & 0x000f) << 8) | ((c3 & 0x000f) << 4) | (c4 & 0x000f)
     return (r1 << 48) | (r2 << 32) | (r3 << 16) | r4
 
+@static_var('rmap', right_map)
 def move_down(state):
     c1 = (state & 0xf000000000000000) >> 48 | \
         (state & 0x0000f00000000000) >> 36 | \
@@ -121,10 +127,10 @@ def move_down(state):
         (state & 0x0000000f00000000) >> 24 | \
         (state & 0x00000000000f0000) >> 12 | \
         (state & 0x000000000000000f)
-    c1 = rmap[c1]
-    c2 = rmap[c2]
-    c3 = rmap[c3]
-    c4 = rmap[c4]
+    c1 = move_down.rmap[c1]
+    c2 = move_down.rmap[c2]
+    c3 = move_down.rmap[c3]
+    c4 = move_down.rmap[c4]
     r1 = (c1 & 0xf000) | ((c2 & 0xf000) >> 4) | ((c3 & 0xf000) >> 8) | ((c4 & 0xf000) >> 12)
     r2 = ((c1 & 0x0f00) << 4) | (c2 & 0x0f00) | ((c3 & 0x0f00) >> 4) | ((c4 & 0x0f00) >> 8)
     r3 = ((c1 & 0x00f0) << 8) | ((c2 & 0x00f0) << 4) | (c3 & 0x00f0) | ((c4 & 0x00f0) >> 4)
@@ -134,13 +140,14 @@ def move_down(state):
 def get_successors_move(state):
     return [move_up(state), move_down(state), move_left(state), move_right(state)]
 
+@static_var('pmap', place_map)
 def get_successors_place(state):
-    return [((r << 48) | (state & 0x0000ffffffffffff)) for r in pmap[(state & 0xffff000000000000) >> 48]] + \
-     [((r << 32) | (state & 0xffff0000ffffffff)) for r in pmap[(state & 0x0000ffff00000000) >> 32]] + \
-     [((r << 16) | (state & 0xffffffff0000ffff)) for r in pmap[(state & 0x00000000ffff0000) >> 16]] + \
-        [(r | (state & 0xffffffffffff0000)) for r in pmap[state & 0x000000000000ffff]]
+    return [((r << 48) | (state & 0x0000ffffffffffff)) for r in get_successors_place.pmap[(state & 0xffff000000000000) >> 48]] + \
+     [((r << 32) | (state & 0xffff0000ffffffff)) for r in get_successors_place.pmap[(state & 0x0000ffff00000000) >> 32]] + \
+     [((r << 16) | (state & 0xffffffff0000ffff)) for r in get_successors_place.pmap[(state & 0x00000000ffff0000) >> 16]] + \
+        [(r | (state & 0xffffffffffff0000)) for r in get_successors_place.pmap[state & 0x000000000000ffff]]
     
-    
+@static_var('qmasks', [int(mask) for mask in (15 << np.arange(0, 64, 4))])
 def is_terminal(state, mode):
     if mode:
         if move_left(state) != state:
@@ -153,29 +160,20 @@ def is_terminal(state, mode):
             return False
         return True
     else:
-        for mask in qmasks:
+        for mask in is_terminal.qmasks:
             if (state & mask) == 0:
                 return False
         return True
 
-def get_cost(state):
-    return costs[(state & 0xffff000000000000) >> 48] + \
-        costs[(state & 0x0000ffff00000000) >> 32] + \
-        costs[(state & 0x00000000ffff0000) >> 16] + \
-        costs[(state & 0x000000000000ffff)]
-        
-inf_p = float('inf')
-inf_m = -float('inf')
-
-def alphabeta(state, depth, a, b, maximize, first=True):
+def alphabeta(state, depth, maximize, cost, a=(-float('inf')), b=float('inf'), first=True):
     if depth == 0 or is_terminal(state, maximize):
-        return get_cost(state)
+        return cost(state)
     if maximize:
-        v = inf_m
+        v = -float('inf')
         if first:
             next_states = {}
         for i, s in enumerate(get_successors_move(state)):
-            m = alphabeta(s, depth - 1, a, b, False, first=False)
+            m = alphabeta(s, depth - 1, False, cost, a, b, first=False)
             if m >= v:
                 v = m
                 if first:
@@ -190,11 +188,11 @@ def alphabeta(state, depth, a, b, maximize, first=True):
             return v, next_states[v]
         return v
     else:
-        v = inf_p
+        v = float('inf')
         if first:
             next_states = {}
         for i, s in enumerate(get_successors_place(state)):
-            m = alphabeta(s, depth - 1, a, b, True, first=False)
+            m = alphabeta(s, depth - 1, True, cost, a, b, first=False)
             if m <= v:
                 v = m
                 if first:
@@ -210,23 +208,24 @@ def alphabeta(state, depth, a, b, maximize, first=True):
         return v
     
 class Agent():
-    def __init__(self, difficulty):
+    def __init__(self, difficulty, cost):
         self.difficulty = difficulty
-        global lmap, rmap, pmap, costs
-        lmap, rmap, pmap, costs = warmup()
+        self.cost = cost
+        self.inf_p = float('inf')
+        self.inf_m = -float('inf')
 
     def player_move(self, state):
-        v, moves = alphabeta(state, self.difficulty, inf_m, inf_p, True)
+        v, moves = alphabeta(state, self.difficulty, True, self.cost)
         return get_successors_move(state)[choice(moves)]
 
     def adversary_move(self, state, rand=False):
         if rand:
-            states = get_successors_place(state)
+            states = get_successors_place(state, pmap)
             if len(states) == 0:
                 return state
             return choice(states)
         try:
-            v, moves = alphabeta(state, self.difficulty, inf_m, inf_p, False)
+            v, moves = alphabeta(state, self.difficulty, False, self.cost)
         except TypeError:
             return state
         

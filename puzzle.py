@@ -3,6 +3,7 @@ from logic import *
 from random import *
 
 from agent import Agent, encode_field, decode_field
+from costs_rowwise import get_cost
 import argparse
 
 parser = argparse.ArgumentParser(description='Game options.')
@@ -17,7 +18,7 @@ adversary = args.adversary
 difficulty = args.difficulty
 
 if player == 'AI' or adversary == 'AI':
-    agent = Agent(difficulty)
+    agent = Agent(difficulty, get_cost)
 
 SIZE = 500
 GRID_LEN = 4
@@ -109,6 +110,7 @@ class GameGrid(Frame):
         if done:
             if adversary == 'AI':
                 self.matrix = decode_field(agent.adversary_move(encode_field(self.matrix), False))
+                import numpy as np
             else:
                 self.matrix = add_two(self.matrix)
             self.update_grid_cells()
