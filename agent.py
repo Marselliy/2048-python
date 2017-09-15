@@ -220,7 +220,7 @@ class Agent():
 
     def adversary_move(self, state, rand=False):
         if rand:
-            states = get_successors_place(state, pmap)
+            states = get_successors_place(state)
             if len(states) == 0:
                 return state
             return choice(states)
