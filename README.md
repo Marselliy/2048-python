@@ -10,7 +10,12 @@ The game is written using Python and TKinter.
 
 To start the game, run:
     
-    $ python3 puzzle.py
+    $ python3 puzzle.py [player] [adversary] [algorithm] [difficulty]
+  
+  - player:      player or AI 
+  - adversary:   random or AI 
+  - algorithm:   alphabeta or montecarlo
+  - difficulty:  (integer greater than 0. Note: large difficulty values require a lot of computations)
 
 
 Contributors:
