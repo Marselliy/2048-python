@@ -9,6 +9,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Game options.')
 parser.add_argument('player', nargs='?', help='human or AI player?', default='human')
 parser.add_argument('adversary', nargs='?', help='random or AI adversary?', default='random')
+parser.add_argument('algorithm', nargs='?', help='AI algorithm', default='montecarlo')
 parser.add_argument('difficulty', nargs='?', help='AI difficulty?', default=5, type=int)
 
 args = parser.parse_args()
@@ -16,9 +17,10 @@ args = parser.parse_args()
 player = args.player
 adversary = args.adversary
 difficulty = args.difficulty
+algorithm = args.algorithm
 
 if player == 'AI' or adversary == 'AI':
-    agent = Agent(difficulty, get_cost)
+    agent = Agent(difficulty, get_cost, algorithm)
 
 SIZE = 500
 GRID_LEN = 4

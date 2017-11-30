@@ -206,16 +206,50 @@ def alphabeta(state, depth, maximize, cost, a=(-float('inf')), b=float('inf'), f
         if first:
             return v, next_states[v]
         return v
+
+def montecarlo(state, maximize, try_num, max_moves):
+    next_states = []
+    if maximize:
+        next_states.extend(get_successors_move(state))
+    else:
+        next_states.extend(get_successors_place(state))
+       
+    state_ranks = {}
+       
+    for in_state in next_states:
+        state_ranks[in_state] = 0
+        for cur_try in range(try_num):
+            cur_max = not maximize
+            cur_state = in_state
+            move_num = 0
+                      
+            while not is_terminal(cur_state, cur_max) and move_num < max_moves:
+                if cur_max:
+                    cur_state = choice(get_successors_move(cur_state))
+                else:
+                    cur_state = choice(get_successors_place(cur_state))
+                cur_max = not cur_max
+                move_num += 1
+            state_ranks[in_state] += move_num
+    if maximize:
+        index = np.argmax(list(state_ranks.values()))
+    else:
+        index = np.argmin(list(state_ranks.values()))
+    return list(state_ranks.keys())[index], [index]
     
 class Agent():
-    def __init__(self, difficulty, cost):
+    def __init__(self, difficulty, cost, algorithm):
         self.difficulty = difficulty
         self.cost = cost
+        self.algorithm = algorithm
         self.inf_p = float('inf')
         self.inf_m = -float('inf')
 
     def player_move(self, state):
-        v, moves = alphabeta(state, self.difficulty, True, self.cost)
+        if self.algorithm == 'alphabeta':
+            v, moves = alphabeta(state, self.difficulty, True, self.cost)
+        elif self.algorithm == 'montecarlo':
+            v, moves = montecarlo(state, True, 200, 4 ** self.difficulty)
         return get_successors_move(state)[choice(moves)]
 
     def adversary_move(self, state, rand=False):
@@ -225,7 +259,10 @@ class Agent():
                 return state
             return choice(states)
         try:
-            v, moves = alphabeta(state, self.difficulty, False, self.cost)
+            if self.algorithm == 'alphabeta':
+                v, moves = alphabeta(state, self.difficulty, False, self.cost)
+            elif self.algorithm == 'montecarlo':
+                v, moves = montecarlo(state, False, 200, 4 ** self.difficulty)
         except TypeError:
             return state
         
